@@ -1,0 +1,10 @@
+fastapi
+python-dotenv
+supabase-py
+tesseract
+opencv-python
+pandas
+web3
+uvicorn
+pydantic
+requests
