@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "D:\\Projects\\SIH2025\\SIH2025\\backend\\blockchain\\contracts\\CertificateRegistry.sol": {
+      "lastModificationDate": 1757161491007,
+      "contentHash": "1002db7b6d13429bd77895be7895546d",
+      "sourceName": "contracts/CertificateRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "CertificateRegistry"
+      ]
+    }
+  }
+}
