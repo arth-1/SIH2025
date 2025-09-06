@@ -1,50 +1,66 @@
-const express = require('express');
-const instituteRouter = Router();
-const {InstituteModel} = require('../models/instituteModel.js');
-instituteRouter.post('/signup', async (req, res) => {
-        try{
-        const {email, password, firstName, lastName} = req.body;
-        await InstituteModel.create({
-            email: email, 
-            password : password, 
-            firstName : firstName,
-            lastName : lastName
-        })
-        res.json({ message: "Signup successful" });
-        } 
-        catch(e){
-            console.log("error during signup",e);
-        }
-        res.status(500).json({ 
-            message: "Internal server error", error: error.message 
-        });
-        });
+import express from "express";
+import jwt from "jsonwebtoken";
+import { JWT_INSTITUTE_SECRET } from "../config/config.js";
+import InstituteModel from "../models/instituteModel.js";
 
-instituteRouter.post('/signin', async (req, res) => {
-    try{
-        const {email, password} =  req.body;
-        const user = await InstituteModel.findOne({
-                email : email, 
-                password : password
-            })
-            if(user){
-               const token =  jwt.sign({
-                    id: user._id
-                }, JWT_USER_PASSWORD);
-                res.json({
-                    token : token
-                })
-            }
-            else{
-                res.status(403).json({
-                    message : "Incorrect credentials"
-                })
-            }
+const instituteRouter = express.Router();
 
-        }
-        catch(e){
-            console.log("error loginin", e);
-        }
-        res.status(500).json({ message: "Internal server error", error: error.message });
-        });
-module.exports = instituteRouter;
+instituteRouter.post("/signup", async (req, res) => {
+  try {
+    const { instituteName, email, password } = req.body;
+
+    if (!instituteName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingInstitute = await InstituteModel.findOne({ email });
+    if (existingInstitute) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    await InstituteModel.create({
+      instituteName,
+      email,
+      password,
+    });
+
+    return res.json({ message: "Signup successful" });
+  } catch (e) {
+    console.log("error during signup", e);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: e.message,
+    });
+  }
+});
+
+instituteRouter.post("/signin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const user = await InstituteModel.findOne({ email });
+
+    if (user && (await user.matchPassword(password))) {
+      const token = jwt.sign({ id: user._id }, JWT_INSTITUTE_SECRET, {
+        expiresIn: "1h",
+      });
+      return res.json({ message: "Signin successful", token });
+    } else {
+      return res.status(403).json({
+        message: "Incorrect credentials",
+      });
+    }
+  } catch (e) {
+    console.log("error loginin", e);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: e.message,
+    });
+  }
+});
+
+export default instituteRouter;
