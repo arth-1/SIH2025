@@ -101,4 +101,28 @@ class DocumentWatermarkService {
   }
 }
 
+// Export simple functions for easy use
+export const hashDocument = (fileBuffer) => {
+  return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+};
+
+export const createWatermark = async (fileBuffer, certificateData) => {
+  return {
+    timestamp: new Date().toISOString(),
+    certificateId: certificateData.certificateId || certificateData.certId,
+    studentName: certificateData.studentName,
+    courseName: certificateData.courseName,
+    documentHash: hashDocument(fileBuffer)
+  };
+};
+
+export const verifyWatermark = async (fileBuffer, watermarkData) => {
+  const currentHash = hashDocument(fileBuffer);
+  return {
+    verified: currentHash === watermarkData.documentHash,
+    currentHash,
+    expectedHash: watermarkData.documentHash
+  };
+};
+
 export default DocumentWatermarkService;

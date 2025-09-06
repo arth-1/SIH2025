@@ -1,7 +1,7 @@
 {
   "name": "sih2025-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
@@ -18,7 +18,11 @@
     "pdf2pic": "^3.2.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.3",
-    "web3": "^4.0.0"
+    "web3": "^4.0.0",
+    "mongoose": "^7.6.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
