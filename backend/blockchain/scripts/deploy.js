@@ -18,7 +18,7 @@ async function main() {
   
   console.log("CertificateRegistry deployed to:", deployedAddress);
 
-  // Save deployment info
+  // Save deployment info atomically to prevent nodemon restart loops
   const deploymentInfo = {
     contractAddress: deployedAddress,
     network: process.env.HARDHAT_NETWORK || "localhost",
@@ -26,10 +26,12 @@ async function main() {
     deployer: (await ethers.getSigners())[0].address
   };
 
-  fs.writeFileSync(
-    "./deployment.json",
-    JSON.stringify(deploymentInfo, null, 2)
-  );
+  // Write to temporary file first, then rename to prevent partial reads
+  const tempFile = "./deployment.tmp";
+  const finalFile = "./deployment.json";
+  
+  fs.writeFileSync(tempFile, JSON.stringify(deploymentInfo, null, 2));
+  fs.renameSync(tempFile, finalFile);
 
   console.log("Deployment info saved to deployment.json");
 

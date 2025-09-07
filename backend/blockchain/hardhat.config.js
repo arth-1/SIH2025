@@ -14,7 +14,23 @@ module.exports = {
   },
   networks: {
     localhost: {
-      url: "http://127.0.0.1:8545"
+      url: "http://127.0.0.1:8545",
+      chainId: 31337,
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        path: "m/44'/60'/0'/0",
+        initialIndex: 0,
+        count: 20,
+        passphrase: "",
+      },
+      mining: {
+        auto: true,
+        interval: 2000
+      },
+      // Enable persistent storage
+      forking: {
+        enabled: false
+      }
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",

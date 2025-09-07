@@ -15,13 +15,20 @@ export class CertificateService {
       const watermarkData = await createWatermark(fileBuffer, certificateData);
       
       // Prepare certificate data for blockchain
+      const now = Date.now();
+      const issueDate = certificateData.issueDate ? new Date(certificateData.issueDate) : new Date();
+      
+      // Ensure we have a valid positive timestamp
+      const issuedAtTimestamp = issueDate.getTime();
+      const validIssuedAt = isNaN(issuedAtTimestamp) || issuedAtTimestamp < 0 ? now : issuedAtTimestamp;
+      
       const blockchainData = {
         studentName: certificateData.studentName,
         rollNumber: certificateData.rollNumber || 'N/A',
         course: certificateData.courseName,
         grade: certificateData.grade || 'Pass',
-        certId: `CERT_${Date.now()}`,
-        issuedAt: new Date(certificateData.issueDate).getTime(), // Convert to timestamp
+        certId: `CERT_${now}`,
+        issuedAt: validIssuedAt, // Always positive timestamp
         institution: certificateData.institutionName,
         documentBuffer: fileBuffer // File is required
       };

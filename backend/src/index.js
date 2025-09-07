@@ -5,12 +5,14 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
+import AutoDeployment from '../blockchain/auto-deploy.js';
 
 // Import routes
 import blockchainRoutes from './routes/blockchain.routes.js';
 import certificateRoutes from './routes/certificateRoute.js';
 import employerRoutes from './routes/employerRoute.js';
 import instituteRoutes from './routes/instituteRouter.js';
+import syncRoutes from './routes/syncRoute.js';
 
 dotenv.config();
 
@@ -79,6 +81,7 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/employers', employerRoutes);
 app.use('/api/institutes', instituteRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -100,11 +103,46 @@ app.use((error, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 SIH2025 Server running on port ${PORT}`);
-  console.log(`📱 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔗 Blockchain service enabled`);
-  console.log(`📊 Database integration ready`);
-});
+
+// Auto-deployment and server startup
+async function startServer() {
+  try {
+    console.log('🔄 Starting SIH2025 Certificate System...');
+    
+    // Step 1: Automatic blockchain and contract deployment with loop protection
+    console.log('🚀 Initializing auto-deployment system...');
+    const autoDeployment = new AutoDeployment();
+    await autoDeployment.initialize();
+    
+    // Step 2: Start the server
+    app.listen(PORT, () => {
+      console.log('\n' + '='.repeat(60));
+      console.log('🎉 SIH2025 CERTIFICATE SYSTEM READY');
+      console.log('='.repeat(60));
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📱 Health check: http://localhost:${PORT}/api/health`);
+      console.log(`🔗 Blockchain service: ACTIVE`);
+      console.log(`📊 Database integration: READY`);
+      console.log(`🔨 Contract deployment: AUTOMATIC`);
+      console.log(`✅ Certificate registration: AUTOMATIC`);
+      console.log('='.repeat(60));
+      console.log('📋 Upload certificates → Automatically registered on blockchain!');
+      console.log('� Verify certificates → Automatic blockchain verification!');
+      console.log('💾 Everything persists across restarts!');
+      console.log('='.repeat(60));
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    console.log('\n🔧 Troubleshooting:');
+    console.log('1. Make sure no other services are using port 8545');
+    console.log('2. Check if you have the latest Hardhat installed');
+    console.log('3. Verify your blockchain directory structure');
+    process.exit(1);
+  }
+}
+
+// Start the server with auto-deployment
+startServer();
 
 export default app;

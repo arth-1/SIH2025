@@ -1,0 +1,19 @@
+{
+  "watch": ["src"],
+  "ignore": [
+    "blockchain/**/*",
+    "blockchain/deployment.json",
+    "blockchain/.deployment-lock",
+    "blockchain/artifacts/**/*",
+    "blockchain/cache/**/*",
+    "blockchain/blockchain-data/**/*",
+    "uploads/**/*",
+    "*.log",
+    "*.lock"
+  ],
+  "ext": "js,json",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 2500
+}

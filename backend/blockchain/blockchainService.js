@@ -34,6 +34,7 @@ class BlockchainService {
     this.web3 = null;
     this.contract = null;
     this.account = null;
+    this.isDevMode = false; // Force real blockchain mode
     this.init();
   }
 
@@ -42,28 +43,262 @@ class BlockchainService {
       // Initialize Web3
       const rpcUrl = process.env.BLOCKCHAIN_RPC_URL || 'http://127.0.0.1:8545';
       this.web3 = new Web3(rpcUrl);
-      console.log('Web3 initialized with RPC:', rpcUrl);
+      console.log('🔗 Web3 initialized with RPC:', rpcUrl);
+
+      // Test connection
+      try {
+        const blockNumber = await this.web3.eth.getBlockNumber();
+        console.log('✅ Blockchain connected successfully. Current block:', blockNumber);
+      } catch (connectionError) {
+        throw new Error(`Cannot connect to blockchain node at ${rpcUrl}: ${connectionError.message}`);
+      }
 
       // Setup account
       if (process.env.PRIVATE_KEY) {
         const account = this.web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
         this.web3.eth.accounts.wallet.add(account);
         this.account = account.address;
-        console.log('Account setup:', this.account);
-      }
-
-      // Initialize contract
-      if (contractConfig) {
-        this.contract = new this.web3.eth.Contract(contractConfig.abi, contractConfig.address);
-        console.log('Contract initialized at:', contractConfig.address);
+        console.log('✅ Account setup:', this.account);
       } else {
-        console.warn('Contract config not available');
+        // Use default hardhat account for development
+        const accounts = await this.web3.eth.getAccounts();
+        this.account = accounts[0];
+        console.log('✅ Using default account:', this.account);
       }
 
-      console.log('Blockchain service initialized successfully');
+      // Initialize contract with verification
+      if (contractConfig) {
+        // CRITICAL: Verify the contract actually exists on the blockchain
+        const contractCode = await this.web3.eth.getCode(contractConfig.address);
+        
+        if (contractCode === '0x') {
+          console.log('⚠️  Contract address has no code - forcing redeployment...');
+          await this.forceContractDeployment();
+          
+          // Reload contract config after deployment
+          const deploymentPath = path.join(__dirname, 'deployment.json');
+          const abiPath = path.join(__dirname, 'artifacts/contracts/CertificateRegistry.sol/CertificateRegistry.json');
+          
+          const newDeployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
+          const contractArtifact = JSON.parse(fs.readFileSync(abiPath, 'utf8'));
+          
+          contractConfig = {
+            address: newDeployment.contractAddress,
+            abi: contractArtifact.abi
+          };
+          
+          console.log('✅ Contract redeployed to:', contractConfig.address);
+        }
+        
+        this.contract = new this.web3.eth.Contract(contractConfig.abi, contractConfig.address);
+        console.log('✅ Contract initialized at:', contractConfig.address);
+        
+        // Test contract connection
+        try {
+          const contractOwner = await this.contract.methods.owner().call();
+          console.log('✅ Contract owner verified:', contractOwner);
+        } catch (contractError) {
+          // Try alternative method if owner() doesn't work
+          try {
+            // Check if we can access contract info via a simple call
+            const result = await this.web3.eth.call({
+              to: contractConfig.address,
+              data: '0x' // Empty data just to test contract existence
+            });
+            console.log('✅ Contract accessible and responding');
+          } catch (altError) {
+            console.warn('⚠️  Contract method test failed, but contract is deployed:', contractError.message);
+          }
+        }
+      } else {
+        throw new Error('Contract configuration not available. Deploy the contract first.');
+      }
+
+      console.log('🚀 Blockchain service initialized successfully with real blockchain!');
+      
+      // Auto-register default institution for certificate registration
+      await this.autoRegisterDefaultInstitution();
+      
+      // Initialize persistence check
+      await this.initializePersistenceCheck();
     } catch (error) {
-      console.error('Failed to initialize blockchain service:', error);
+      console.error('❌ Failed to initialize blockchain service:', error.message);
+      throw error;
     }
+  }
+
+  /**
+   * Check blockchain persistence and sync with MongoDB
+   */
+  async initializePersistenceCheck() {
+    try {
+      console.log('🔍 Checking blockchain persistence and syncing with MongoDB...');
+      
+      // This will be implemented to check if certificates in MongoDB
+      // exist on blockchain and vice versa
+      const syncResult = await this.syncDatabaseWithBlockchain();
+      
+      if (syncResult.missingOnBlockchain > 0) {
+        console.log(`⚠️  Found ${syncResult.missingOnBlockchain} certificates in MongoDB that need blockchain registration`);
+        console.log('🔄 Auto-sync will handle this on next certificate operation');
+      }
+      
+      console.log('✅ Persistence check completed');
+    } catch (error) {
+      console.warn('⚠️  Persistence check failed:', error.message);
+    }
+  }
+
+  /**
+   * Sync database certificates with blockchain
+   */
+  async syncDatabaseWithBlockchain() {
+    try {
+      // Import the sync service (dynamic import to avoid circular dependencies)
+      const { default: certificateSyncService } = await import('../src/services/certificateSyncService.js');
+      
+      console.log('🔍 Checking if certificate sync is needed...');
+      const syncResult = await certificateSyncService.syncMissingCertificates();
+      
+      return {
+        totalInMongo: 0,
+        totalOnBlockchain: 0,
+        missingOnBlockchain: syncResult.failed || 0,
+        missingInMongo: 0,
+        synced: syncResult.synced || 0
+      };
+    } catch (error) {
+      console.warn('⚠️  Certificate sync check failed:', error.message);
+      return {
+        totalInMongo: 0,
+        totalOnBlockchain: 0,
+        missingOnBlockchain: 0,
+        missingInMongo: 0,
+        synced: 0
+      };
+    }
+  }
+
+  /**
+   * Force contract deployment when contract address has no code
+   */
+  async forceContractDeployment() {
+    console.log('🔨 Force deploying contract...');
+    
+    try {
+      const { spawn } = await import('child_process');
+      
+      return new Promise((resolve, reject) => {
+        const deployProcess = spawn('npx', ['hardhat', 'run', 'scripts/deploy.js', '--network', 'localhost'], {
+          cwd: __dirname,
+          stdio: 'pipe',
+          shell: true
+        });
+
+        let output = '';
+
+        deployProcess.stdout.on('data', (data) => {
+          const text = data.toString();
+          output += text;
+          console.log('Deploy:', text.trim());
+        });
+
+        deployProcess.stderr.on('data', (data) => {
+          console.error('Deploy error:', data.toString());
+        });
+
+        deployProcess.on('close', (code) => {
+          if (code === 0) {
+            console.log('✅ Force deployment completed!');
+            resolve(output);
+          } else {
+            reject(new Error(`Force deployment failed with code ${code}`));
+          }
+        });
+
+        deployProcess.on('error', (error) => {
+          reject(error);
+        });
+      });
+    } catch (error) {
+      console.error('❌ Force deployment failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Auto-register default institution for certificate registration
+   */
+  async autoRegisterDefaultInstitution() {
+    try {
+      console.log('🏢 Checking default institution authorization...');
+      
+      // Check if current account is already authorized
+      const existingInstitution = await this.contract.methods.authorizedInstitutions(this.account).call();
+      
+      if (existingInstitution && existingInstitution.length > 0) {
+        console.log('✅ Account already authorized as institution:', existingInstitution);
+        return;
+      }
+      
+      // Register default institution
+      const defaultInstitutionCode = 'DEFAULT_INSTITUTION';
+      const defaultInstitutionName = 'SIH2025 Default Institution';
+      
+      console.log('🔨 Registering default institution...');
+      
+      // Check if institution already exists
+      const existingInst = await this.contract.methods.institutions(defaultInstitutionCode).call();
+      
+      if (existingInst.isActive) {
+        console.log('✅ Default institution already exists and is active');
+        return;
+      }
+      
+      // Register the institution
+      const gasLimit = 500000;
+      const gasPrice = await this.web3.eth.getGasPrice();
+      
+      const tx = await this.contract.methods.registerInstitution(
+        defaultInstitutionCode,
+        defaultInstitutionName,
+        this.account
+      ).send({
+        from: this.account,
+        gas: gasLimit,
+        gasPrice: gasPrice
+      });
+      
+      console.log('✅ Default institution registered!');
+      console.log(`📍 Institution Code: ${defaultInstitutionCode}`);
+      console.log(`🏢 Institution Name: ${defaultInstitutionName}`);
+      console.log(`🔑 Authorized Signer: ${this.account}`);
+      console.log(`📝 Transaction: ${tx.transactionHash}`);
+      
+    } catch (error) {
+      console.error('❌ Failed to register default institution:', error.message);
+      
+      // If it's just a "already exists" error, that's fine
+      if (error.message.includes('Institution already exists') || 
+          error.message.includes('already registered')) {
+        console.log('✅ Institution already exists - continuing...');
+      } else {
+        console.warn('⚠️  Institution registration failed, but continuing...');
+      }
+    }
+  }
+
+  // Mock function for development mode
+  generateMockBlockchainResponse(certId) {
+    return {
+      success: true,
+      transactionHash: `0x${crypto.randomBytes(32).toString('hex')}`,
+      blockNumber: Math.floor(Math.random() * 1000000),
+      certId: certId,
+      documentHash: `0x${crypto.randomBytes(32).toString('hex')}`,
+      metadataHash: `0x${crypto.randomBytes(32).toString('hex')}`,
+      txHash: `0x${crypto.randomBytes(32).toString('hex')}`
+    };
   }
 
   // Utility function to generate hash
@@ -77,18 +312,18 @@ class BlockchainService {
       throw new Error('Blockchain service not properly initialized');
     }
 
-    try {
-      const {
-        studentName,
-        rollNumber,
-        course,
-        grade,
-        certId,
-        documentBuffer, // Buffer or base64 string of the document
-        issuedAt
-      } = certificateData;
+    const {
+      studentName,
+      rollNumber,
+      course,
+      grade,
+      certId,
+      documentBuffer,
+      issuedAt
+    } = certificateData;
 
-      // Generate hashes
+    try {
+      // Generate real hashes from actual file data
       const documentHash = this.generateHash(documentBuffer);
       const metadataHash = this.generateHash({
         studentName,
@@ -99,7 +334,18 @@ class BlockchainService {
         issuedAt
       });
 
-      // Prepare transaction
+      console.log(`📝 Registering certificate ${certId} on blockchain with real file hash...`);
+      console.log(`🔍 Document hash: ${documentHash}`);
+      console.log(`🔍 Metadata hash: ${metadataHash}`);
+      
+      // Ensure issuedAt is a positive Unix timestamp (in seconds)
+      const currentTime = Math.floor(Date.now() / 1000);
+      const issuedAtSeconds = Math.floor(Math.abs(issuedAt) / 1000);
+      const validIssuedAt = issuedAtSeconds > 0 ? issuedAtSeconds : currentTime;
+      
+      console.log(`🕒 Issue timestamp: ${validIssuedAt} (${new Date(validIssuedAt * 1000).toISOString()})`);
+
+      // Prepare transaction for real blockchain
       const tx = this.contract.methods.registerCertificate(
         studentName,
         rollNumber,
@@ -108,28 +354,40 @@ class BlockchainService {
         certId,
         documentHash,
         metadataHash,
-        Math.floor(issuedAt / 1000) // Convert to Unix timestamp
+        validIssuedAt // Use validated positive Unix timestamp
       );
 
+      console.log(`⛽ Estimating gas for transaction...`);
       const gasEstimate = await tx.estimateGas({ from: this.account });
       const gasPrice = await this.web3.eth.getGasPrice();
-
+      
+      // Convert BigInt values to numbers for calculations
+      const gasEstimateNum = Number(gasEstimate);
+      const gasPriceNum = Number(gasPrice);
+      const gasLimit = Math.floor(gasEstimateNum * 1.2); // Add 20% buffer
+      
+      console.log(`🚀 Sending transaction to blockchain...`);
+      console.log(`⛽ Gas estimate: ${gasEstimateNum}, Gas price: ${gasPriceNum}, Gas limit: ${gasLimit}`);
+      
       const result = await tx.send({
         from: this.account,
-        gas: Math.floor(gasEstimate * 1.2), // Add 20% buffer
-        gasPrice: gasPrice
+        gas: gasLimit,
+        gasPrice: gasPriceNum
       });
 
+      console.log(`✅ Certificate registered! Transaction hash: ${result.transactionHash}`);
+      
       return {
         success: true,
         transactionHash: result.transactionHash,
         blockNumber: result.blockNumber,
         certId: certId,
         documentHash: documentHash,
-        metadataHash: metadataHash
+        metadataHash: metadataHash,
+        txHash: result.transactionHash
       };
     } catch (error) {
-      console.error('Error registering certificate:', error);
+      console.error('❌ Error registering certificate:', error);
       throw new Error(`Failed to register certificate: ${error.message}`);
     }
   }
@@ -139,6 +397,8 @@ class BlockchainService {
     if (!this.contract || !this.account) {
       throw new Error('Blockchain service not properly initialized');
     }
+
+    console.log(`📚 Batch registering ${certificatesData.length} certificates on blockchain...`);
 
     try {
       const studentNames = [];
@@ -187,10 +447,15 @@ class BlockchainService {
       const gasEstimate = await tx.estimateGas({ from: this.account });
       const gasPrice = await this.web3.eth.getGasPrice();
 
+      // Convert BigInt values for calculations
+      const gasEstimateNum = Number(gasEstimate);
+      const gasPriceNum = Number(gasPrice);
+      const gasLimit = Math.floor(gasEstimateNum * 1.2); // Add 20% buffer
+
       const result = await tx.send({
         from: this.account,
-        gas: Math.floor(gasEstimate * 1.2), // Add 20% buffer
-        gasPrice: gasPrice
+        gas: gasLimit,
+        gasPrice: gasPriceNum
       });
 
       return {
@@ -212,17 +477,56 @@ class BlockchainService {
       throw new Error('Blockchain service not properly initialized');
     }
 
+    console.log(`🔍 Verifying certificate ${certId} on blockchain...`);
+
     try {
-      const documentHash = this.generateHash(documentBuffer);
+      // First, verify the contract still exists
+      const contractCode = await this.web3.eth.getCode(this.contract.options.address);
+      if (contractCode === '0x') {
+        console.error('⚠️  Contract no longer exists at address:', this.contract.options.address);
+        throw new Error('Contract not found on blockchain - may need redeployment');
+      }
+
+      let documentHash = null;
       
-      const result = await this.contract.methods.verifyCertificate(certId, documentHash).call();
-      
-      return {
-        success: true,
-        isValid: result,
-        certId: certId,
-        documentHash: documentHash
-      };
+      // If fileBuffer is provided, generate hash; otherwise, skip file verification
+      if (documentBuffer) {
+        documentHash = this.generateHash(documentBuffer);
+        console.log(`🔍 Document hash for verification: ${documentHash}`);
+        
+        // Verify with document hash
+        const result = await this.contract.methods.verifyCertificate(certId, documentHash).call();
+        
+        return {
+          success: true,
+          isValid: result,
+          certId: certId,
+          documentHash: documentHash,
+          fileVerified: true
+        };
+      } else {
+        // Just check if certificate exists on blockchain without file verification
+        console.log(`🔍 Verifying certificate existence only (no file provided)`);
+        
+        try {
+          const certificate = await this.contract.methods.getCertificate(certId).call();
+          
+          return {
+            success: true,
+            isValid: certificate && certificate[11], // isValid field from contract
+            certId: certId,
+            documentHash: null,
+            fileVerified: false,
+            certificate: certificate
+          };
+        } catch (getCertError) {
+          return {
+            success: false,
+            isValid: false,
+            error: 'Certificate not found on blockchain'
+          };
+        }
+      }
     } catch (error) {
       console.error('Error verifying certificate:', error);
       return {
@@ -238,6 +542,8 @@ class BlockchainService {
     if (!this.contract) {
       throw new Error('Blockchain service not properly initialized');
     }
+
+    console.log(`📋 Retrieving certificate ${certId} from blockchain...`);
 
     try {
       const result = await this.contract.methods.getCertificate(certId).call();
@@ -299,10 +605,15 @@ class BlockchainService {
       const gasEstimate = await tx.estimateGas({ from: this.account });
       const gasPrice = await this.web3.eth.getGasPrice();
 
+      // Convert BigInt values for calculations
+      const gasEstimateNum = Number(gasEstimate);
+      const gasPriceNum = Number(gasPrice);
+      const gasLimit = Math.floor(gasEstimateNum * 1.2);
+
       const result = await tx.send({
         from: this.account,
-        gas: Math.floor(gasEstimate * 1.2),
-        gasPrice: gasPrice
+        gas: gasLimit,
+        gasPrice: gasPriceNum
       });
 
       return {
@@ -356,10 +667,15 @@ class BlockchainService {
       const gasEstimate = await tx.estimateGas({ from: this.account });
       const gasPrice = await this.web3.eth.getGasPrice();
 
+      // Convert BigInt values for calculations
+      const gasEstimateNum = Number(gasEstimate);
+      const gasPriceNum = Number(gasPrice);
+      const gasLimit = Math.floor(gasEstimateNum * 1.2);
+
       const result = await tx.send({
         from: this.account,
-        gas: Math.floor(gasEstimate * 1.2),
-        gasPrice: gasPrice
+        gas: gasLimit,
+        gasPrice: gasPriceNum
       });
 
       return {
