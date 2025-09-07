@@ -8,7 +8,7 @@ export class CertificateService {
    */
   async registerCertificate(certificateData, fileBuffer, institutionId) {
     try {
-      // Generate document hash
+      // Generate document hash from the required file buffer
       const documentHash = await hashDocument(fileBuffer);
       
       // Create watermark for the document
@@ -21,8 +21,9 @@ export class CertificateService {
         course: certificateData.courseName,
         grade: certificateData.grade || 'Pass',
         certId: `CERT_${Date.now()}`,
-        issuedAt: certificateData.issueDate,
-        institution: certificateData.institutionName
+        issuedAt: new Date(certificateData.issueDate).getTime(), // Convert to timestamp
+        institution: certificateData.institutionName,
+        documentBuffer: fileBuffer // File is required
       };
       
       // Register on blockchain first
@@ -48,7 +49,8 @@ export class CertificateService {
         metadata: {
           originalFileName: certificateData.originalFileName || 'certificate.pdf',
           fileSize: fileBuffer.length,
-          uploadedAt: new Date()
+          uploadedAt: new Date(),
+          hasFile: true
         }
       });
       
@@ -87,7 +89,7 @@ export class CertificateService {
       }
       
       // Verify on blockchain
-      const blockchainVerification = await blockchainService.verifyCertificate(certificateId);
+      const blockchainVerification = await blockchainService.verifyCertificate(certificateId, fileBuffer);
       
       if (!blockchainVerification.success) {
         return {

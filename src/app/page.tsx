@@ -1,21 +1,31 @@
-import { StatsCards } from '@/components/dashboard/stats-cards';
-import { RecentActivity } from '@/components/dashboard/recent-activity';
-import { VerificationsChart } from '@/components/dashboard/verifications-chart';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        // Redirect authenticated users to dashboard
+        router.push('/dashboard');
+      } else {
+        // Redirect unauthenticated users to landing page
+        router.push('/landing');
+      }
+    }
+  }, [user, loading, router]);
+
+  // Show loading state while determining redirect
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="font-headline text-3xl font-bold tracking-tight">
-        Dashboard
-      </h1>
-      <StatsCards />
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3">
-          <RecentActivity />
-        </div>
-        <div className="lg:col-span-2">
-          <VerificationsChart />
-        </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
       </div>
     </div>
   );

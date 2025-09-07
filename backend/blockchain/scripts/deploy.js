@@ -27,7 +27,7 @@ async function main() {
   };
 
   fs.writeFileSync(
-    "./blockchain/deployment.json",
+    "./deployment.json",
     JSON.stringify(deploymentInfo, null, 2)
   );
 

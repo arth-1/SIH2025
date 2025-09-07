@@ -1,16 +1,14 @@
 import type { Metadata } from 'next';
-import { AppSidebar } from '@/components/layout/app-sidebar';
-import { Header } from '@/components/layout/header';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { SidebarInset } from '@/components/ui/sidebar';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ConditionalLayout } from '@/components/layout/conditional-layout';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
 export const metadata: Metadata = {
-  title: 'CertiCheck',
-  description: 'Authenticity Validator for Academia',
+  title: 'CertiCheck - Authenticity Validator for Academia',
+  description: 'Blockchain-powered certificate verification platform for secure academic credential validation',
 };
 
 export default function RootLayout({
@@ -30,13 +28,11 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased min-h-screen')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset>
-              <Header />
-              <main className="p-4 sm:p-6 lg:p-8">{children}</main>
-            </SidebarInset>
-          </SidebarProvider>
+          <AuthProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

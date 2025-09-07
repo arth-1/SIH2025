@@ -10,27 +10,66 @@ const certificateSchema = new mongoose.Schema({
   },
   studentName: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'Not Provided'
   },
   rollNumber: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'N/A'
   },
   institution: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'Unknown Institution'
+  },
+  institutionName: { 
+    type: String, 
+    required: false,
+    default: 'Unknown Institution'
   },
   course: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'Not Specified'
+  },
+  courseName: { 
+    type: String, 
+    required: false,
+    default: 'Not Specified'
   },
   grade: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'Pass'
   },
   issueDate: { 
     type: Date, 
-    required: true 
+    required: false,
+    default: Date.now
+  },
+  
+  // Additional fields used by service
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationDate: {
+    type: Date,
+    default: Date.now
+  },
+  watermarkData: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  institutionId: {
+    type: String,
+    required: false
+  },
+  metadata: {
+    originalFileName: String,
+    fileSize: Number,
+    uploadedAt: Date,
+    hasFile: Boolean
   },
   
   // File storage
@@ -41,12 +80,12 @@ const certificateSchema = new mongoose.Schema({
   // Blockchain integration
   blockchainHash: { 
     type: String, 
-    required: true,
+    required: false,
     index: true 
   },
   transactionHash: { 
     type: String, 
-    required: true 
+    required: false 
   },
   documentHash: { 
     type: String, 

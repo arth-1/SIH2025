@@ -21,14 +21,29 @@ employerRoute.post("/signup", async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    await EmployerModel.create({
+    const newEmployer = await EmployerModel.create({
       email,
       password,
       firstName,
       lastName,
     });
 
-    return res.json({ message: "Signup successful" });
+    // Generate token for immediate login
+    const token = jwt.sign({ id: newEmployer._id }, JWT_EMPLOYER_SECRET, {
+      expiresIn: "1h",
+    });
+
+    return res.json({ 
+      message: "Signup successful",
+      token,
+      user: {
+        id: newEmployer._id,
+        email: newEmployer.email,
+        firstName: newEmployer.firstName,
+        lastName: newEmployer.lastName,
+        type: 'employer'
+      }
+    });
   } catch (e) {
     console.log("Error during signup:", e);
     return res.status(500).json({
@@ -57,7 +72,17 @@ employerRoute.post("/signin", async (req, res) => {
       const token = jwt.sign({ id: user._id }, JWT_EMPLOYER_SECRET, {
         expiresIn: "1h",
       });
-      return res.json({ message: "Signin successful", token });
+      return res.json({ 
+        message: "Signin successful", 
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          type: 'employer'
+        }
+      });
     } else {
       return res.status(403).json({ message: "Incorrect credentials" });
     }

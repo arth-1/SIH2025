@@ -6,6 +6,16 @@ import path from "path";
 import Certificate from "../models/certificateModel.js";
 import certificateService from "../services/certificateService.js";
 
+// Helper function to convert BigInt values to strings for JSON serialization
+function serializeBigInt(obj) {
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return value;
+  }));
+}
+
 const router = express.Router();
 const upload = multer({ 
   dest: "uploads/",
@@ -29,18 +39,14 @@ router.post("/register", upload.single("certificateFile"), async (req, res) => {
       return res.status(400).json({ error: "Certificate file is required" });
     }
     
-    if (!studentName || !courseName || !institutionName || !issueDate) {
-      return res.status(400).json({ error: "All certificate details are required" });
-    }
-    
     // Read file buffer
     const fileBuffer = fs.readFileSync(req.file.path);
     
     const certificateData = {
-      studentName,
-      courseName,
-      institutionName,
-      issueDate,
+      studentName: studentName || 'Not Provided',
+      courseName: courseName || 'Not Specified',
+      institutionName: institutionName || 'Unknown Institution',
+      issueDate: issueDate || new Date().toISOString().split('T')[0],
       originalFileName: req.file.originalname
     };
     
@@ -54,12 +60,13 @@ router.post("/register", upload.single("certificateFile"), async (req, res) => {
     fs.unlinkSync(req.file.path);
     
     if (result.success) {
-      res.json({
+      const serializedResult = serializeBigInt({
         message: "Certificate registered successfully",
         certificateId: result.certificateId,
         transactionHash: result.transactionHash,
         documentHash: result.documentHash
       });
+      res.json(serializedResult);
     } else {
       res.status(400).json({ error: result.error });
     }
@@ -89,7 +96,7 @@ router.post("/verify", upload.single("certificateFile"), async (req, res) => {
     const result = await certificateService.verifyCertificate(certificateId, fileBuffer);
     
     if (result.success) {
-      res.json({
+      const serializedResult = serializeBigInt({
         message: "Certificate verification completed",
         isValid: true,
         certificate: result.certificate,
@@ -97,6 +104,7 @@ router.post("/verify", upload.single("certificateFile"), async (req, res) => {
         documentIntegrity: result.documentIntegrity,
         transactionHash: result.transactionHash
       });
+      res.json(serializedResult);
     } else {
       res.status(404).json({ 
         error: result.error,

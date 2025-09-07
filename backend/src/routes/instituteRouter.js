@@ -18,13 +18,20 @@ instituteRouter.post("/signup", async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    await InstituteModel.create({
+    const newInstitute = await InstituteModel.create({
       instituteName,
       email,
       password,
     });
 
-    return res.json({ message: "Signup successful" });
+    return res.json({ 
+      message: "Signup successful",
+      user: {
+        id: newInstitute._id,
+        instituteName: newInstitute.instituteName,
+        email: newInstitute.email
+      }
+    });
   } catch (e) {
     console.log("error during signup", e);
     return res.status(500).json({
@@ -48,7 +55,15 @@ instituteRouter.post("/signin", async (req, res) => {
       const token = jwt.sign({ id: user._id }, JWT_INSTITUTE_SECRET, {
         expiresIn: "1h",
       });
-      return res.json({ message: "Signin successful", token });
+      return res.json({ 
+        message: "Signin successful", 
+        token,
+        user: {
+          id: user._id,
+          instituteName: user.instituteName,
+          email: user.email
+        }
+      });
     } else {
       return res.status(403).json({
         message: "Incorrect credentials",
