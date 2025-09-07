@@ -1,37 +1,32 @@
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/** filter=lfs diff=lfs merge=lfs -text
+# AI/ML Model files - track with LFS
 *.pt filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.pkl filter=lfs diff=lfs merge=lfs -text
-*.model filter=lfs diff=lfs merge=lfs -text
 *.bin filter=lfs diff=lfs merge=lfs -text
-*.onnx filter=lfs diff=lfs merge=lfs -text
-*.pb filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
 *.weights filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+
+# Document files - track with LFS
+*.pdf filter=lfs diff=lfs merge=lfs -text
+
+# Image files - track with LFS
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+
+# Jupyter notebooks - track with LFS
+*.ipynb filter=lfs diff=lfs merge=lfs -text
+
+# Python compiled files - track with LFS
+*.pyc filter=lfs diff=lfs merge=lfs -text
+
+# Archive files - track with LFS
 *.zip filter=lfs diff=lfs merge=lfs -text
 *.tar.gz filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.pt filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.pth filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.png filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.jpg filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.pdf filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.ipynb filter=lfs diff=lfs merge=lfs -text
+
+# Specific AI folder - track everything with LFS
+backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/** filter=lfs diff=lfs merge=lfs -text
 backend/uploads/** filter=lfs diff=lfs merge=lfs -text
 backend/blockchain/watermarked-documents/** filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.h5 filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.pkl filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.model filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.bin filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.weights filter=lfs diff=lfs merge=lfs -text
-backend/ai/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
-backend/**/*.zip filter=lfs diff=lfs merge=lfs -text
-backend/**/*.tar.gz filter=lfs diff=lfs merge=lfs -text
-backend/**/*.7z filter=lfs diff=lfs merge=lfs -text
-backend/**/*.sqlite filter=lfs diff=lfs merge=lfs -text
-backend/**/*.db filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/yolov8s.pt filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/*.png filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/*.pdf filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/*.ipynb filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/data/*.png filter=lfs diff=lfs merge=lfs -text
-backend/ai/Signature-Recognition-with-SiameseNetwork-and-CycleGAN/images/*.png filter=lfs diff=lfs merge=lfs -text
