@@ -20,7 +20,8 @@ import {
   BarChart3,
   Loader2,
   Download,
-  Eye
+  Eye,
+  XCircle
 } from 'lucide-react';
 
 interface Certificate {
@@ -50,6 +51,7 @@ export default function DashboardPage() {
   // Certificate registration form
   const [registerForm, setRegisterForm] = useState({
     studentName: '',
+    rollNumber: '',
     courseName: '',
     issueDate: '',
     file: null as File | null
@@ -61,7 +63,16 @@ export default function DashboardPage() {
     file: null as File | null
   });
 
+  // Student search form
+  const [studentSearchForm, setStudentSearchForm] = useState({
+    studentName: '',
+    rollNumber: '',
+    courseName: '',
+    institutionName: ''
+  });
+
   const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [studentSearchResults, setStudentSearchResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -117,6 +128,7 @@ export default function DashboardPage() {
 
       const formData = new FormData();
       formData.append('studentName', registerForm.studentName || '');
+      formData.append('rollNumber', registerForm.rollNumber || '');
       formData.append('courseName', registerForm.courseName || '');
       formData.append('institutionName', user?.instituteName || 'Unknown');
       formData.append('issueDate', registerForm.issueDate || '');
@@ -141,6 +153,7 @@ export default function DashboardPage() {
       setSuccess(`Certificate registered successfully! Certificate ID: ${data.certificateId}`);
       setRegisterForm({
         studentName: '',
+        rollNumber: '',
         courseName: '',
         issueDate: '',
         file: null
@@ -187,6 +200,42 @@ export default function DashboardPage() {
     }
   };
 
+  const handleStudentSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setStudentSearchResults([]);
+
+    try {
+      const searchData = {
+        studentName: studentSearchForm.studentName,
+        rollNumber: studentSearchForm.rollNumber,
+        courseName: studentSearchForm.courseName,
+        institutionName: studentSearchForm.institutionName
+      };
+
+      const response = await fetch('http://localhost:5000/api/enhanced-certificates/find-by-student', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(searchData)
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Search failed');
+      }
+
+      setStudentSearchResults(data.certificates || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!user) {
     return <div>Loading...</div>;
   }
@@ -199,16 +248,14 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
               <Shield className="h-8 w-8 text-blue-600" />
-              <span className="font-bold text-xl text-gray-900">CertiCheck</span>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">CertiCheck</h1>
+                <p className="text-sm text-gray-600">{user?.instituteName || user?.email}</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant="outline">
-                {user.type === 'institute' ? user.instituteName : `${user.firstName} ${user.lastName}`}
-              </Badge>
-              <Button variant="outline" onClick={logout}>
-                Sign Out
-              </Button>
-            </div>
+            <Button variant="outline" onClick={logout}>
+              Sign Out
+            </Button>
           </div>
         </div>
       </header>
@@ -216,14 +263,11 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.type === 'institute' ? user.instituteName : user.firstName}!
-          </h1>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {user?.instituteName || user?.email}!
+          </h2>
           <p className="text-gray-600">
-            {user.type === 'institute' 
-              ? 'Manage and verify your institution\'s certificates with blockchain security'
-              : 'Verify academic credentials with confidence'
-            }
+            Manage and verify your institution's certificates with blockchain security
           </p>
         </div>
 
@@ -237,7 +281,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.total}</div>
               <p className="text-xs text-muted-foreground">
-                +{stats.recent} from last month
+                +4 from last month
               </p>
             </CardContent>
           </Card>
@@ -250,7 +294,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.verified}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}% verification rate
+                100% verification rate
               </p>
             </CardContent>
           </Card>
@@ -269,109 +313,144 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue={user.type === 'institute' ? 'register' : 'verify'} className="space-y-6">
-          <TabsList>
-            {user.type === 'institute' && (
-              <TabsTrigger value="register">Register Certificate</TabsTrigger>
-            )}
-            <TabsTrigger value="verify">Verify Certificate</TabsTrigger>
-            {user.type === 'institute' && (
-              <TabsTrigger value="manage">Manage Certificates</TabsTrigger>
-            )}
+        {/* Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Upload className="h-5 w-5 mr-2" />
+                Register Certificate
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Search className="h-5 w-5 mr-2" />
+                Verify Certificate
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Manage Certificates
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="register" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="verify">Verify</TabsTrigger>
+            <TabsTrigger value="manage">Manage</TabsTrigger>
           </TabsList>
-
-          {/* Register Certificate Tab (Institution only) */}
-          {user.type === 'institute' && (
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Register New Certificate</CardTitle>
-                  <CardDescription>
-                    Upload and register a new certificate on the blockchain
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {error && (
-                    <Alert className="mb-4 border-red-200 bg-red-50">
-                      <AlertDescription className="text-red-800">{error}</AlertDescription>
-                    </Alert>
-                  )}
+          
+          {/* Register Certificate Tab */}
+          <TabsContent value="register">
+            <Card>
+              <CardHeader>
+                <CardTitle>Register New Certificate</CardTitle>
+                <CardDescription>
+                  Upload and register a new certificate on the blockchain
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {error && (
+                  <Alert className="mb-4 border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800">{error}</AlertDescription>
+                  </Alert>
+                )}
                   
-                  {success && (
-                    <Alert className="mb-4 border-green-200 bg-green-50">
-                      <AlertDescription className="text-green-800">{success}</AlertDescription>
-                    </Alert>
-                  )}
+                {success && (
+                  <Alert className="mb-4 border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-800">{success}</AlertDescription>
+                  </Alert>
+                )}
 
-                  <form onSubmit={handleRegisterCertificate} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="studentName">Student Name (Optional)</Label>
-                        <Input
-                          id="studentName"
-                          value={registerForm.studentName}
-                          onChange={(e) => setRegisterForm({...registerForm, studentName: e.target.value})}
-                          placeholder="John Doe"
-                          disabled={loading}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="courseName">Course Name (Optional)</Label>
-                        <Input
-                          id="courseName"
-                          value={registerForm.courseName}
-                          onChange={(e) => setRegisterForm({...registerForm, courseName: e.target.value})}
-                          placeholder="Bachelor of Science in Computer Science"
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-                    
+                <form onSubmit={handleRegisterCertificate} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="issueDate">Issue Date (Optional)</Label>
+                      <Label htmlFor="studentName">Student Name (Optional)</Label>
                       <Input
-                        id="issueDate"
-                        type="date"
-                        value={registerForm.issueDate}
-                        onChange={(e) => setRegisterForm({...registerForm, issueDate: e.target.value})}
+                        id="studentName"
+                        value={registerForm.studentName}
+                        onChange={(e) => setRegisterForm({...registerForm, studentName: e.target.value})}
+                        placeholder="John Doe"
                         disabled={loading}
                       />
                     </div>
-                    
                     <div>
-                      <Label htmlFor="certificateFile">Certificate File (PDF/Image) - Required</Label>
+                      <Label htmlFor="rollNumber">Roll Number (Optional)</Label>
                       <Input
-                        id="certificateFile"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setRegisterForm({...registerForm, file: e.target.files?.[0] || null})}
-                        required
+                        id="rollNumber"
+                        value={registerForm.rollNumber}
+                        onChange={(e) => setRegisterForm({...registerForm, rollNumber: e.target.value})}
+                        placeholder="2021001"
                         disabled={loading}
                       />
-                      <p className="text-sm text-gray-500 mt-1">
-                        File upload is required. You can leave other fields empty and they will be set to default values.
-                      </p>
                     </div>
-                    
-                    <Button type="submit" disabled={loading} className="w-full">
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Registering on Blockchain...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Register Certificate
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="courseName">Course Name (Optional)</Label>
+                    <Input
+                      id="courseName"
+                      value={registerForm.courseName}
+                      onChange={(e) => setRegisterForm({...registerForm, courseName: e.target.value})}
+                      placeholder="Bachelor of Science in Computer Science"
+                      disabled={loading}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="issueDate">Issue Date (Optional)</Label>
+                    <Input
+                      id="issueDate"
+                      type="date"
+                      value={registerForm.issueDate}
+                      onChange={(e) => setRegisterForm({...registerForm, issueDate: e.target.value})}
+                      disabled={loading}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="certificateFile">Certificate File (PDF/Image) - Required</Label>
+                    <Input
+                      id="certificateFile"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => setRegisterForm({...registerForm, file: e.target.files?.[0] || null})}
+                      required
+                      disabled={loading}
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      File upload is required. You can leave other fields empty and they will be set to default values.
+                    </p>
+                  </div>
+                  
+                  <Button type="submit" disabled={loading} className="w-full">
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Registering on Blockchain...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Register Certificate
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Verify Certificate Tab */}
           <TabsContent value="verify">
@@ -379,7 +458,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Verify Certificate</CardTitle>
                 <CardDescription>
-                  Verify the authenticity of a certificate using blockchain technology
+                  Verify certificates by ID or search by student details
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -389,46 +468,162 @@ export default function DashboardPage() {
                   </Alert>
                 )}
 
-                <form onSubmit={handleVerifyCertificate} className="space-y-4">
-                  <div>
-                    <Label htmlFor="certificateId">Certificate ID</Label>
-                    <Input
-                      id="certificateId"
-                      value={verifyForm.certificateId}
-                      onChange={(e) => setVerifyForm({...verifyForm, certificateId: e.target.value})}
-                      placeholder="CERT_1234567890"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+                <Tabs defaultValue="cert-id" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="cert-id">By Certificate ID</TabsTrigger>
+                    <TabsTrigger value="student-search">By Student Details</TabsTrigger>
+                  </TabsList>
                   
-                  <div>
-                    <Label htmlFor="verifyFile">Certificate File (Optional - for integrity check)</Label>
-                    <Input
-                      id="verifyFile"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => setVerifyForm({...verifyForm, file: e.target.files?.[0] || null})}
-                      disabled={loading}
-                    />
-                  </div>
-                  
-                  <Button type="submit" disabled={loading} className="w-full">
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Verify Certificate
-                      </>
-                    )}
-                  </Button>
-                </form>
+                  <TabsContent value="cert-id" className="space-y-4">
+                    <form onSubmit={handleVerifyCertificate} className="space-y-4">
+                      <div>
+                        <Label htmlFor="certificateId">Certificate ID</Label>
+                        <Input
+                          id="certificateId"
+                          value={verifyForm.certificateId}
+                          onChange={(e) => setVerifyForm({...verifyForm, certificateId: e.target.value})}
+                          placeholder="CERT_1234567890"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="verifyFile">Certificate File (Optional - for integrity check)</Label>
+                        <Input
+                          id="verifyFile"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => setVerifyForm({...verifyForm, file: e.target.files?.[0] || null})}
+                          disabled={loading}
+                        />
+                      </div>
+                      
+                      <Button type="submit" disabled={loading} className="w-full">
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="mr-2 h-4 w-4" />
+                            Verify Certificate
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </TabsContent>
 
-                {/* Verification Result */}
+                  <TabsContent value="student-search" className="space-y-4">
+                    <form onSubmit={handleStudentSearch} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="searchStudentName">Student Name</Label>
+                          <Input
+                            id="searchStudentName"
+                            value={studentSearchForm.studentName}
+                            onChange={(e) => setStudentSearchForm({...studentSearchForm, studentName: e.target.value})}
+                            placeholder="John Doe"
+                            disabled={loading}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="searchRollNumber">Roll Number</Label>
+                          <Input
+                            id="searchRollNumber"
+                            value={studentSearchForm.rollNumber}
+                            onChange={(e) => setStudentSearchForm({...studentSearchForm, rollNumber: e.target.value})}
+                            placeholder="2021001"
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="searchCourseName">Course Name</Label>
+                          <Input
+                            id="searchCourseName"
+                            value={studentSearchForm.courseName}
+                            onChange={(e) => setStudentSearchForm({...studentSearchForm, courseName: e.target.value})}
+                            placeholder="Computer Science"
+                            disabled={loading}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="searchInstitutionName">Institution Name</Label>
+                          <Input
+                            id="searchInstitutionName"
+                            value={studentSearchForm.institutionName}
+                            onChange={(e) => setStudentSearchForm({...studentSearchForm, institutionName: e.target.value})}
+                            placeholder="University Name"
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                      
+                      <Button type="submit" disabled={loading} className="w-full">
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="mr-2 h-4 w-4" />
+                            Search Certificates
+                          </>
+                        )}
+                      </Button>
+                    </form>
+
+                    {/* Student Search Results */}
+                    {studentSearchResults.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold mb-4">Search Results ({studentSearchResults.length} found)</h3>
+                        <div className="space-y-3">
+                          {studentSearchResults.map((cert, index) => (
+                            <Card key={index} className="border-blue-200 bg-blue-50">
+                              <CardContent className="pt-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                  <div>
+                                    <strong>Certificate ID:</strong> {cert.certificateId}
+                                  </div>
+                                  <div>
+                                    <strong>Student:</strong> {cert.studentName}
+                                  </div>
+                                  <div>
+                                    <strong>Roll No:</strong> {cert.rollNumber}
+                                  </div>
+                                  <div>
+                                    <strong>Course:</strong> {cert.course}
+                                  </div>
+                                  <div>
+                                    <strong>Institution:</strong> {cert.institution}
+                                  </div>
+                                  <div>
+                                    <strong>Grade:</strong> {cert.grade}
+                                  </div>
+                                  <div>
+                                    <strong>Issue Date:</strong> {cert.issueDate}
+                                  </div>
+                                  <div>
+                                    <Badge variant={cert.isBlacklisted ? "destructive" : "default"}>
+                                      {cert.isBlacklisted ? "Blacklisted" : cert.verificationStatus}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+
+                {/* Verification Result for Certificate ID search */}
                 {verificationResult && (
                   <div className="mt-6">
                     <Card className={verificationResult.isValid ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
@@ -441,33 +636,27 @@ export default function DashboardPage() {
                             </>
                           ) : (
                             <>
-                              <Clock className="h-5 w-5 text-red-600 mr-2" />
-                              Verification Failed
+                              <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                              Invalid Certificate
                             </>
                           )}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {verificationResult.isValid ? (
+                        {verificationResult.certificate && (
                           <div className="space-y-2">
                             <p><strong>Student:</strong> {verificationResult.certificate.studentName}</p>
                             <p><strong>Course:</strong> {verificationResult.certificate.courseName}</p>
                             <p><strong>Institution:</strong> {verificationResult.certificate.institutionName}</p>
-                            <p><strong>Issue Date:</strong> {new Date(verificationResult.certificate.issueDate).toLocaleDateString()}</p>
-                            <p><strong>Verification Count:</strong> {verificationResult.certificate.verificationCount}</p>
-                            {verificationResult.documentIntegrity && (
-                              <p><strong>Document Integrity:</strong> 
-                                <span className={verificationResult.documentIntegrity.verified ? 'text-green-600' : 'text-red-600'}>
-                                  {verificationResult.documentIntegrity.verified ? ' ✓ Verified' : ' ✗ Tampered'}
-                                </span>
-                              </p>
+                            <p><strong>Issue Date:</strong> {verificationResult.certificate.issueDate}</p>
+                            <p><strong>Verifications:</strong> {verificationResult.certificate.verificationCount}</p>
+                            {verificationResult.transactionHash && (
+                              <p><strong>Blockchain Hash:</strong> {verificationResult.transactionHash}</p>
                             )}
-                            <p className="text-sm text-gray-600">
-                              <strong>Transaction Hash:</strong> {verificationResult.transactionHash}
-                            </p>
                           </div>
-                        ) : (
-                          <p className="text-red-800">{verificationResult.error}</p>
+                        )}
+                        {verificationResult.error && (
+                          <p className="text-red-600">{verificationResult.error}</p>
                         )}
                       </CardContent>
                     </Card>
@@ -477,52 +666,45 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Manage Certificates Tab (Institution only) */}
-          {user.type === 'institute' && (
-            <TabsContent value="manage">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Certificates</CardTitle>
-                  <CardDescription>
-                    Manage all certificates issued by your institution
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {certificates.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                      No certificates found. Register your first certificate to get started.
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {certificates.map((cert) => (
-                        <Card key={cert._id} className="border">
-                          <CardContent className="pt-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-semibold">{cert.studentName}</h3>
-                                <p className="text-sm text-gray-600">{cert.courseName}</p>
-                                <p className="text-xs text-gray-500">
-                                  ID: {cert.certificateId} | Issued: {new Date(cert.issueDate).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <Badge variant={cert.isVerified ? 'default' : 'secondary'}>
-                                  {cert.isVerified ? 'Verified' : 'Pending'}
-                                </Badge>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Verified {cert.verificationCount} times
-                                </p>
-                              </div>
+          {/* Manage Certificates Tab */}
+          <TabsContent value="manage">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Certificates</CardTitle>
+                <CardDescription>
+                  View and manage all registered certificates
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {certificates.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No certificates found</p>
+                ) : (
+                  <div className="space-y-4">
+                    {certificates.map((cert) => (
+                      <Card key={cert._id} className="border-gray-200">
+                        <CardContent className="pt-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <p><strong>ID:</strong> {cert.certificateId}</p>
+                              <p><strong>Student:</strong> {cert.studentName}</p>
+                              <p><strong>Course:</strong> {cert.courseName}</p>
+                              <p><strong>Issue Date:</strong> {cert.issueDate}</p>
+                              <p><strong>Verifications:</strong> {cert.verificationCount}</p>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                            <div className="flex items-center space-x-2">
+                              <Badge variant={cert.isVerified ? "default" : "secondary"}>
+                                {cert.isVerified ? "Verified" : "Pending"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

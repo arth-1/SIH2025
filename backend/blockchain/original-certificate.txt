@@ -1,8 +1,0 @@
-CERTIFICATE OF COMPLETION
-Student Name: John Doe
-Roll Number: 2021001
-Course: Computer Science
-Grade: A
-Institution: MIT
-Issue Date: June 15, 2024
-Certificate ID: CS2024001

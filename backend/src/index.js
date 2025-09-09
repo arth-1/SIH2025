@@ -10,6 +10,7 @@ import AutoDeployment from '../blockchain/auto-deploy.js';
 // Import routes
 import blockchainRoutes from './routes/blockchain.routes.js';
 import certificateRoutes from './routes/certificateRoute.js';
+import enhancedCertificateRoutes from './routes/enhancedCertificateRoute.js';
 import employerRoutes from './routes/employerRoute.js';
 import instituteRoutes from './routes/instituteRouter.js';
 import syncRoutes from './routes/syncRoute.js';
@@ -79,6 +80,8 @@ app.get('/debug', (req, res) => {
 // API Routes
 app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/ai-certificates', enhancedCertificateRoutes); // New AI-integrated routes
+app.use('/api/enhanced-certificates', enhancedCertificateRoutes); // Enhanced certificate routes for frontend
 app.use('/api/employers', employerRoutes);
 app.use('/api/institutes', instituteRoutes);
 app.use('/api/sync', syncRoutes);

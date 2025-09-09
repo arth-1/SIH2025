@@ -1,6 +1,0 @@
-This is a sample certificate for John Doe
-Roll Number: 2021001
-Course: Computer Science
-Grade: A
-Institution: MIT
-Date: June 15, 2024

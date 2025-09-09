@@ -7,6 +7,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Configuration from environment variables
+const config = {
+  blockchainUrl: process.env.BLOCKCHAIN_URL || 'http://localhost:8545',
+  gasLimit: parseInt(process.env.GAS_LIMIT) || 500000,
+  gasPrice: parseInt(process.env.GAS_PRICE) || 20000000000,
+  network: process.env.HARDHAT_NETWORK || 'localhost'
+};
+
 // Load contract ABI and address
 let contractConfig;
 try {
@@ -41,7 +49,7 @@ class BlockchainService {
   async init() {
     try {
       // Initialize Web3
-      const rpcUrl = process.env.BLOCKCHAIN_RPC_URL || 'http://127.0.0.1:8545';
+      const rpcUrl = config.blockchainUrl;
       this.web3 = new Web3(rpcUrl);
       console.log('🔗 Web3 initialized with RPC:', rpcUrl);
 
@@ -256,7 +264,7 @@ class BlockchainService {
       }
       
       // Register the institution
-      const gasLimit = 500000;
+      const gasLimit = config.gasLimit;
       const gasPrice = await this.web3.eth.getGasPrice();
       
       const tx = await this.contract.methods.registerInstitution(
@@ -318,13 +326,19 @@ class BlockchainService {
       course,
       grade,
       certId,
+      documentHash: providedDocumentHash,
       documentBuffer,
       issuedAt
     } = certificateData;
 
     try {
-      // Generate real hashes from actual file data
-      const documentHash = this.generateHash(documentBuffer);
+      // Use provided document hash or generate from buffer
+      const documentHash = providedDocumentHash || (documentBuffer ? this.generateHash(documentBuffer) : null);
+      
+      if (!documentHash) {
+        throw new Error('Either documentHash or documentBuffer must be provided');
+      }
+      
       const metadataHash = this.generateHash({
         studentName,
         rollNumber,
@@ -380,7 +394,7 @@ class BlockchainService {
       return {
         success: true,
         transactionHash: result.transactionHash,
-        blockNumber: result.blockNumber,
+        blockNumber: Number(result.blockNumber), // Convert BigInt to Number
         certId: certId,
         documentHash: documentHash,
         metadataHash: metadataHash,
@@ -461,7 +475,7 @@ class BlockchainService {
       return {
         success: true,
         transactionHash: result.transactionHash,
-        blockNumber: result.blockNumber,
+        blockNumber: Number(result.blockNumber), // Convert BigInt to Number
         processedCount: certIds.length,
         certIds: certIds
       };

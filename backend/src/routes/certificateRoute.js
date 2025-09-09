@@ -19,13 +19,16 @@ function serializeBigInt(obj) {
 const router = express.Router();
 const upload = multer({ 
   dest: "uploads/",
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 }, // Default 10MB limit
   fileFilter: (req, file, cb) => {
-    // Accept PDF, images
-    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+    // Accept PDF, images based on environment configuration
+    const allowedExtensions = (process.env.ALLOWED_EXTENSIONS || 'jpg,jpeg,png,pdf').split(',');
+    const fileExt = path.extname(file.originalname).toLowerCase().slice(1);
+    
+    if (allowedExtensions.includes(fileExt) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Only images and PDF files are allowed'), false);
+      cb(new Error(`Only ${allowedExtensions.join(', ')} files are allowed`), false);
     }
   }
 });
@@ -33,7 +36,7 @@ const upload = multer({
 // Register a new certificate with blockchain integration
 router.post("/register", upload.single("certificateFile"), async (req, res) => {
   try {
-    const { studentName, courseName, institutionName, issueDate, institutionId } = req.body;
+    const { studentName, rollNumber, courseName, institutionName, issueDate, institutionId } = req.body;
     
     if (!req.file) {
       return res.status(400).json({ error: "Certificate file is required" });
@@ -44,6 +47,7 @@ router.post("/register", upload.single("certificateFile"), async (req, res) => {
     
     const certificateData = {
       studentName: studentName || 'Not Provided',
+      rollNumber: rollNumber || 'Not Provided',
       courseName: courseName || 'Not Specified',
       institutionName: institutionName || 'Unknown Institution',
       issueDate: issueDate || new Date().toISOString().split('T')[0],

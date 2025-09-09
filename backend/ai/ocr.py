@@ -23,9 +23,9 @@
 #     return extracted_text
 
 # # ------------- GEMINI API CONFIG -------------
-# # Make sure you set your API key
-# # Example: os.environ["GEMINI_API_KEY"] = "your_api_key_here"
-# genai.configure(api_key="AIzaSyBkTtiE1qEAaj4nAgnTErtydb0a7AG2jzw")
+# # Make sure you set your API key in .env file
+# # Example: GEMINI_API_KEY=your_api_key_here
+# # API key should be loaded from environment variables for security
 
 
 # model = genai.GenerativeModel("gemini-1.5-flash")  # or gemini-1.5-pro if available
@@ -79,13 +79,18 @@ import google.generativeai as genai
 import json
 from pymongo import MongoClient
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ------------- CONFIG -------------
-# Tesseract path (adjust if installed elsewhere)
-pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+# Tesseract path from environment
+TESSERACT_PATH = os.getenv('TESSERACT_PATH', r"C:/Program Files/Tesseract-OCR/tesseract.exe")
+pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
-# MongoDB connection
-MONGO_URI = "mongodb+srv://salokherudra1_db_user:PSEPS1gHT9PMYRc6@cluster0.utvdkrm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# MongoDB connection from environment
+MONGO_URI = os.getenv('MONGODB_URI', "mongodb+srv://salokherudra1_db_user:PSEPS1gHT9PMYRc6@cluster0.utvdkrm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 DB_NAME = "certificateDB"
 COLLECTION_NAME = "certificates"
 
@@ -93,8 +98,12 @@ client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 certificates_collection = db[COLLECTION_NAME]
 
-# Gemini API
-genai.configure(api_key="AIzaSyBkTtiE1qEAaj4nAgnTErtydb0a7AG2jzw")
+# Gemini API from environment
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables!")
+
+genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 # ------------- OCR FUNCTIONS -------------
