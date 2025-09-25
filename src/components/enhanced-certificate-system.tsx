@@ -73,48 +73,51 @@ const CertificateUploadSection: React.FC<CertificateUploadSectionProps> = ({
   };
 
   return (
-    <Card>
+    <Card className="bg-oxford_blue/90 backdrop-blur-sm border-gray-600">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-white">
           <Upload className="h-5 w-5" />
           Upload Certificates
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-gray-300">
           Upload certificates for AI-powered verification and blockchain registration
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="institution-code">Institution Code *</Label>
+            <Label htmlFor="institution-code" className="text-white">Institution Code *</Label>
             <Input
               id="institution-code"
               value={institutionCode}
               onChange={(e) => setInstitutionCode(e.target.value)}
               placeholder="e.g., IIT_DELHI"
               disabled={processing}
+              className="bg-oxford_blue text-white placeholder:text-gray-400 border-gray-600 focus:border-white focus:ring-white"
             />
           </div>
           <div>
-            <Label htmlFor="institution-name">Institution Name</Label>
+            <Label htmlFor="institution-name" className="text-white">Institution Name</Label>
             <Input
               id="institution-name"
               value={institutionName}
               onChange={(e) => setInstitutionName(e.target.value)}
               placeholder="e.g., Indian Institute of Technology Delhi"
               disabled={processing}
+              className="bg-oxford_blue text-white placeholder:text-gray-400 border-gray-600 focus:border-white focus:ring-white"
             />
           </div>
         </div>
 
         <div>
-          <Label>Upload Type</Label>
+          <Label className="text-white">Upload Type</Label>
           <div className="flex gap-2 mt-2">
             <Button
               variant={uploadType === 'single' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setUploadType('single')}
               disabled={processing}
+              className={uploadType === 'single' ? '' : 'border-gray-600 text-white hover:bg-white/10'}
             >
               Single Certificate
             </Button>
@@ -123,25 +126,26 @@ const CertificateUploadSection: React.FC<CertificateUploadSectionProps> = ({
               size="sm"
               onClick={() => setUploadType('bulk')}
               disabled={processing}
+              className={uploadType === 'bulk' ? '' : 'border-gray-600 text-white hover:bg-white/10'}
             >
               Bulk Upload
             </Button>
           </div>
         </div>
 
-        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+        <div className="border-2 border-dashed rounded-lg p-8 text-center border-gray-500 hover:border-white">
           {processing ? (
             <div className="space-y-2">
-              <div className="text-sm text-gray-600">Processing certificates...</div>
+              <div className="text-sm text-gray-300">Processing certificates...</div>
               <Progress value={uploadProgress} className="w-full" />
             </div>
           ) : (
             <div className="space-y-2">
               <FileText className="h-10 w-10 text-gray-400 mx-auto" />
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-300 mb-4">
                 Select certificate files to upload
               </p>
-              <label htmlFor="file-upload" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+              <label htmlFor="file-upload" className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer">
                 <input
                   id="file-upload"
                   type="file"
@@ -182,35 +186,37 @@ const VerificationSection: React.FC<VerificationSectionProps> = ({
   };
 
   return (
-    <Card>
+    <Card className="bg-oxford_blue/90 backdrop-blur-sm border-gray-600">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-white">
           <Shield className="h-5 w-5" />
           Verify Certificate
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-gray-300">
           Verify certificate authenticity using blockchain and AI analysis
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="cert-id">Certificate ID *</Label>
+          <Label htmlFor="cert-id" className="text-white">Certificate ID *</Label>
           <Input
             id="cert-id"
             value={certificateId}
             onChange={(e) => setCertificateId(e.target.value)}
             placeholder="Enter certificate ID"
             disabled={loading}
+            className="bg-oxford_blue text-white placeholder:text-gray-400 border-gray-600 focus:border-white focus:ring-white"
           />
         </div>
         <div>
-          <Label htmlFor="doc-hash">Document Hash (Optional)</Label>
+          <Label htmlFor="doc-hash" className="text-white">Document Hash (Optional)</Label>
           <Input
             id="doc-hash"
             value={documentHash}
             onChange={(e) => setDocumentHash(e.target.value)}
             placeholder="SHA256 hash for additional verification"
             disabled={loading}
+            className="bg-oxford_blue text-white placeholder:text-gray-400 border-gray-600 focus:border-white focus:ring-white"
           />
         </div>
         <Button 
@@ -529,18 +535,18 @@ export default function EnhancedCertificateSystem() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">Certificate Authenticity Validator</h1>
-        <p className="text-gray-600">
+        <h1 className="text-3xl font-bold text-white">Certificate Authenticity Validator</h1>
+        <p className="text-gray-300">
           AI-powered certificate verification with blockchain security
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="verify">Verify</TabsTrigger>
-          <TabsTrigger value="search">Student Search</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 bg-rich_black/50">
+          <TabsTrigger value="upload" className="text-white data-[state=active]:bg-white data-[state=active]:text-rich_black">Upload</TabsTrigger>
+          <TabsTrigger value="verify" className="text-white data-[state=active]:bg-white data-[state=active]:text-rich_black">Verify</TabsTrigger>
+          <TabsTrigger value="search" className="text-white data-[state=active]:bg-white data-[state=active]:text-rich_black">Student Search</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-white data-[state=active]:bg-white data-[state=active]:text-rich_black">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="space-y-4">

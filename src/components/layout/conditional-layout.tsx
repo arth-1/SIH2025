@@ -2,18 +2,15 @@
 
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppSidebar } from '@/components/layout/app-sidebar';
-import { Header } from '@/components/layout/header';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { SidebarInset } from '@/components/ui/sidebar';
+import NavbarDemo from '@/components/ui/resizable-navbar-demo';
 
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  // Pages that should not have the sidebar layout
-  const noLayoutPages = ['/landing', '/auth/signin', '/auth/signup', '/verify'];
-  const shouldShowSidebar = !noLayoutPages.some(path => pathname.startsWith(path)) && user;
+  // Pages that should not have the navbar layout
+  const noLayoutPages = ['/landing', '/auth/signin', '/auth/signup'];
+  const shouldShowNavbar = !noLayoutPages.some(path => pathname.startsWith(path));
 
   // Show loading state
   if (loading) {
@@ -35,19 +32,18 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  // For pages without sidebar (landing, auth, verify)
-  if (!shouldShowSidebar) {
+  // For pages without navbar (landing, auth)
+  if (!shouldShowNavbar) {
     return <>{children}</>;
   }
 
-  // For dashboard and other authenticated pages with sidebar
+  // For all other pages with navbar
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <Header />
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-gradient-to-br from-platinum-100 via-silver_lake_blue-100 to-yinmn_blue-100 dark:from-rich_black-DEFAULT dark:via-oxford_blue-DEFAULT dark:to-yinmn_blue-DEFAULT">
+      <NavbarDemo />
+      <main className="pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {children}
+      </main>
+    </div>
   );
 }
