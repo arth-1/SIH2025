@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { hashDocument } from './documentWatermarkService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -333,7 +334,7 @@ class BlockchainService {
 
     try {
       // Use provided document hash or generate from buffer
-      const documentHash = providedDocumentHash || (documentBuffer ? this.generateHash(documentBuffer) : null);
+      const documentHash = providedDocumentHash || (documentBuffer ? hashDocument(documentBuffer) : null);
       
       if (!documentHash) {
         throw new Error('Either documentHash or documentBuffer must be provided');
@@ -426,7 +427,7 @@ class BlockchainService {
 
       // Process each certificate
       for (const cert of certificatesData) {
-        const documentHash = this.generateHash(cert.documentBuffer);
+        const documentHash = hashDocument(cert.documentBuffer);
         const metadataHash = this.generateHash({
           studentName: cert.studentName,
           rollNumber: cert.rollNumber,
@@ -505,11 +506,13 @@ class BlockchainService {
       
       // If fileBuffer is provided, generate hash; otherwise, skip file verification
       if (documentBuffer) {
-        documentHash = this.generateHash(documentBuffer);
+        documentHash = hashDocument(documentBuffer);
         console.log(`🔍 Document hash for verification: ${documentHash}`);
         
         // Verify with document hash
+        console.log(`🔍 Calling smart contract verifyCertificate(${certId}, ${documentHash})`);
         const result = await this.contract.methods.verifyCertificate(certId, documentHash).call();
+        console.log(`📋 Smart contract verification result: ${result}`);
         
         return {
           success: true,

@@ -25,8 +25,8 @@ class CertificateService {
 
     // Configuration from environment variables
     this.config = {
-      fraudThreshold: parseFloat(process.env.FRAUD_THRESHOLD) || 0.7,
-      signatureThreshold: parseFloat(process.env.SIGNATURE_THRESHOLD) || 0.8,
+      fraudThreshold: parseFloat(process.env.FRAUD_THRESHOLD) || 0.5,
+      signatureThreshold: parseFloat(process.env.SIGNATURE_THRESHOLD) || 0.5,
       maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760, // 10MB default
       allowedExtensions: (process.env.ALLOWED_EXTENSIONS || 'jpg,jpeg,png,pdf').split(',')
     };

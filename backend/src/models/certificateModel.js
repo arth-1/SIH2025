@@ -18,6 +18,11 @@ const certificateSchema = new mongoose.Schema({
     required: false,
     default: 'N/A'
   },
+  studentEmail: {
+    type: String,
+    required: false,
+    default: null
+  },
   institution: { 
     type: String, 
     required: false,
@@ -76,6 +81,28 @@ const certificateSchema = new mongoose.Schema({
   image: String, // base64 or URL for original image
   filePath: String, // path to uploaded file
   watermarkedPath: String, // path to watermarked file
+  certificateImagePath: String, // path to certificate image/PDF
+  certificateImage: String, // base64 encoded certificate image/PDF
+  
+  // Signature verification
+  signatureData: {
+    extractedSignatures: [String], // paths to extracted signature crops
+    signatureVerificationResults: [{
+      signatureIndex: Number,
+      confidenceScore: Number,
+      isMatch: Boolean,
+      verificationStatus: String,
+      bbox: {
+        x1: Number,
+        y1: Number,
+        x2: Number,
+        y2: Number
+      }
+    }],
+    overallSignatureMatch: Boolean,
+    highestConfidenceScore: Number,
+    signatureVerificationDate: Date
+  },
   
   // Blockchain integration
   blockchainHash: { 

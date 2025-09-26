@@ -1,11 +1,14 @@
 import express from 'express';
 import multer from 'multer';
 import CertificateService from '../services/enhancedCertificateService.js';
+import { CertificateService as RegularCertificateService } from '../services/certificateService.js';
 import AIService from '../services/aiService.js';
+import emailService from '../services/emailService.js';
 import path from 'path';
 
 const router = express.Router();
 const certificateService = new CertificateService();
+const regularCertificateService = new RegularCertificateService();
 const aiService = new AIService();
 
 // Configure multer for file uploads
@@ -136,6 +139,83 @@ router.get('/verify/:certificateId', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Certificate verification failed',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Comprehensive certificate verification with file upload and signature verification
+ */
+router.post('/verify/:certificateId', upload.single('certificateFile'), async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+    const { email } = req.body; // Extract email from request body
+    
+    if (!certificateId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Certificate ID is required'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Certificate file is required for comprehensive verification'
+      });
+    }
+
+    // Perform comprehensive verification including signature verification
+    const result = await regularCertificateService.verifyCertificate(certificateId, req.file.buffer);
+    
+    console.log('Verification result:', JSON.stringify(result, null, 2));
+
+    // Transform the result to match the expected format for the frontend
+    const transformedResult = {
+      success: result.success,
+      documentCheck: result.success && !!result.certificate,
+      blockchainVerification: result.success, // If overall success is true, blockchain verification passed
+      integrityCheck: result.success && (!result.documentIntegrity || result.documentIntegrity.verified),
+      signatureVerification: result.signatureVerification,
+      certificateData: result.certificate,
+      blockchainData: result.blockchain,
+      transactionHash: result.transactionHash,
+      verificationDate: new Date().toISOString(),
+      error: result.error
+    };
+
+    // Send email notification if email is provided or if certificate has student email
+    let emailToSend = email && email.trim() ? email.trim() : null;
+    
+    // If no email provided but certificate has student email, use that
+    if (!emailToSend && result.certificate && result.certificate.studentEmail) {
+      emailToSend = result.certificate.studentEmail;
+    }
+
+    if (emailToSend) {
+      try {
+        const emailResult = await emailService.sendVerificationResult(emailToSend, transformedResult, certificateId);
+        console.log('Email notification sent to:', emailToSend, emailResult);
+        transformedResult.emailSent = emailResult.success;
+        transformedResult.emailStatus = emailResult.success ? 'sent' : 'failed';
+        transformedResult.emailRecipient = emailToSend;
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        transformedResult.emailSent = false;
+        transformedResult.emailStatus = 'failed';
+        transformedResult.emailError = emailError.message;
+        transformedResult.emailRecipient = emailToSend;
+      }
+    }
+
+    res.json(transformedResult);
+
+  } catch (error) {
+    console.error('Comprehensive certificate verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Comprehensive certificate verification failed',
       error: error.message
     });
   }
@@ -419,7 +499,7 @@ router.get('/system/config', (req, res) => {
     const config = {
       maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760,
       allowedExtensions: (process.env.ALLOWED_EXTENSIONS || 'jpg,jpeg,png,pdf').split(','),
-      fraudThreshold: parseFloat(process.env.FRAUD_THRESHOLD) || 0.7,
+      fraudThreshold: parseFloat(process.env.FRAUD_THRESHOLD) || 0.5,
       signatureThreshold: parseFloat(process.env.SIGNATURE_THRESHOLD) || 0.5,
       tesseractAvailable: !!process.env.TESSERACT_PATH,
       geminiConfigured: !!process.env.GEMINI_API_KEY,
@@ -579,6 +659,60 @@ router.post('/find-by-student', async (req, res) => {
     res.status(500).json({ 
       error: error.message || 'Failed to search certificates',
       success: false
+    });
+  }
+});
+
+/**
+ * Send OTP to email (standalone endpoint)
+ */
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required'
+      });
+    }
+
+    const result = await emailService.sendOTP(email, otp);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'OTP sent successfully',
+        messageId: result.messageId
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('OTP sending error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Test email service connection
+ */
+router.get('/test-email', async (req, res) => {
+  try {
+    const result = await emailService.testConnection();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

@@ -1,6 +1,9 @@
 import Certificate from '../models/certificateModel.js';
 import { hashDocument, createWatermark, verifyWatermark } from '../../blockchain/documentWatermarkService.js';
 import blockchainService from '../../blockchain/blockchainService.js';
+import signatureVerificationService from './signatureVerificationService.js';
+import fs from 'fs';
+import path from 'path';
 
 export class CertificateService {
   /**
@@ -8,17 +11,11 @@ export class CertificateService {
    */
   async registerCertificate(certificateData, fileBuffer, institutionId) {
     try {
-      // Generate document hash from the required file buffer
       const documentHash = await hashDocument(fileBuffer);
-      
-      // Create watermark for the document
       const watermarkData = await createWatermark(fileBuffer, certificateData);
       
-      // Prepare certificate data for blockchain
       const now = Date.now();
       const issueDate = certificateData.issueDate ? new Date(certificateData.issueDate) : new Date();
-      
-      // Ensure we have a valid positive timestamp
       const issuedAtTimestamp = issueDate.getTime();
       const validIssuedAt = isNaN(issuedAtTimestamp) || issuedAtTimestamp < 0 ? now : issuedAtTimestamp;
       
@@ -28,24 +25,29 @@ export class CertificateService {
         course: certificateData.courseName,
         grade: certificateData.grade || 'Pass',
         certId: `CERT_${now}`,
-        issuedAt: validIssuedAt, // Always positive timestamp
+        issuedAt: validIssuedAt,
         institution: certificateData.institutionName,
-        documentBuffer: fileBuffer // File is required
+        documentBuffer: fileBuffer
       };
       
-      // Register on blockchain first
       const blockchainResult = await blockchainService.registerCertificate(blockchainData);
       
       if (!blockchainResult.success) {
         throw new Error(`Blockchain registration failed: ${blockchainResult.error}`);
       }
       
-      // Create certificate record in MongoDB
+      const imageSaveResult = await signatureVerificationService.saveCertificateImage(
+        fileBuffer, 
+        blockchainResult.certId,
+        certificateData.originalFileName
+      );
+      
       const certificate = new Certificate({
         certificateId: blockchainResult.certId,
         studentName: certificateData.studentName,
         courseName: certificateData.courseName,
         institutionName: certificateData.institutionName,
+        rollNumber: certificateData.rollNumber,
         issueDate: new Date(certificateData.issueDate),
         blockchainHash: blockchainResult.txHash,
         documentHash: documentHash,
@@ -53,6 +55,8 @@ export class CertificateService {
         verificationDate: new Date(),
         watermarkData: watermarkData,
         institutionId: institutionId,
+        certificateImagePath: imageSaveResult.success ? imageSaveResult.filePath : null,
+        certificateImage: imageSaveResult.success ? null : fileBuffer.toString('base64'),
         metadata: {
           originalFileName: certificateData.originalFileName || 'certificate.pdf',
           fileSize: fileBuffer.length,
@@ -85,7 +89,6 @@ export class CertificateService {
    */
   async verifyCertificate(certificateId, fileBuffer = null) {
     try {
-      // Get certificate from MongoDB
       const certificate = await Certificate.findOne({ certificateId });
       
       if (!certificate) {
@@ -95,19 +98,28 @@ export class CertificateService {
         };
       }
       
-      // Verify on blockchain
       const blockchainVerification = await blockchainService.verifyCertificate(certificateId, fileBuffer);
       
-      if (!blockchainVerification.success) {
+      console.log('Blockchain verification result:', JSON.stringify(blockchainVerification, null, 2));
+      
+      if (!blockchainVerification.success || !blockchainVerification.isValid) {
+        let errorMessage = 'Certificate verification failed on blockchain';
+        if (blockchainVerification.success && !blockchainVerification.isValid) {
+          errorMessage = 'Certificate found on blockchain but document hash does not match (document may be tampered)';
+        } else if (blockchainVerification.error) {
+          errorMessage = blockchainVerification.error;
+        }
+        
         return {
           success: false,
-          error: 'Certificate not found on blockchain',
-          certificate: certificate
+          error: errorMessage,
+          certificate: certificate,
+          blockchain: blockchainVerification
         };
       }
       
-      // If file is provided, verify document integrity
       let documentIntegrity = { verified: true, message: 'No document provided for integrity check' };
+      let signatureVerification = null;
       
       if (fileBuffer) {
         const currentHash = await hashDocument(fileBuffer);
@@ -126,14 +138,43 @@ export class CertificateService {
           };
         }
         
-        // Verify watermark if available
         if (certificate.watermarkData) {
           const watermarkVerification = await verifyWatermark(fileBuffer, certificate.watermarkData);
           documentIntegrity.watermarkStatus = watermarkVerification;
         }
+        
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const tempFilePath = path.join(tempDir, `verify_${Date.now()}_${certificateId}.pdf`);
+        fs.writeFileSync(tempFilePath, fileBuffer);
+        
+        try {
+          const sigVerificationResult = await signatureVerificationService.verifySignature(
+            tempFilePath,
+            certificate.studentName,
+            certificate.rollNumber,
+            certificateId
+          );
+          
+          signatureVerification = sigVerificationResult.success 
+            ? sigVerificationResult.signatureVerification 
+            : { error: sigVerificationResult.error };
+            
+        } catch (sigError) {
+          console.error('Signature verification error:', sigError);
+          signatureVerification = { error: sigError.message };
+        }
+        
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch (cleanupError) {
+          console.error('Error cleaning up temp file:', cleanupError);
+        }
       }
       
-      // Update verification count and last verified date
       certificate.verificationCount = (certificate.verificationCount || 0) + 1;
       certificate.lastVerifiedAt = new Date();
       await certificate.save();
@@ -145,6 +186,7 @@ export class CertificateService {
           studentName: certificate.studentName,
           courseName: certificate.courseName,
           institutionName: certificate.institutionName,
+          rollNumber: certificate.rollNumber,
           issueDate: certificate.issueDate,
           isVerified: certificate.isVerified,
           verificationDate: certificate.verificationDate,
@@ -153,6 +195,7 @@ export class CertificateService {
         },
         blockchain: blockchainVerification.certificate,
         documentIntegrity: documentIntegrity,
+        signatureVerification: signatureVerification,
         transactionHash: certificate.blockchainHash
       };
       

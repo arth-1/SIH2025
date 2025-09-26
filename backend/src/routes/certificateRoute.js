@@ -36,7 +36,7 @@ const upload = multer({
 // Register a new certificate with blockchain integration
 router.post("/register", upload.single("certificateFile"), async (req, res) => {
   try {
-    const { studentName, rollNumber, courseName, institutionName, issueDate, institutionId } = req.body;
+    const { studentName, rollNumber, courseName, studentEmail, institutionName, issueDate, institutionId } = req.body;
     
     if (!req.file) {
       return res.status(400).json({ error: "Certificate file is required" });
@@ -49,6 +49,7 @@ router.post("/register", upload.single("certificateFile"), async (req, res) => {
       studentName: studentName || 'Not Provided',
       rollNumber: rollNumber || 'Not Provided',
       courseName: courseName || 'Not Specified',
+      studentEmail: studentEmail || null,
       institutionName: institutionName || 'Unknown Institution',
       issueDate: issueDate || new Date().toISOString().split('T')[0],
       originalFileName: req.file.originalname
@@ -106,6 +107,7 @@ router.post("/verify", upload.single("certificateFile"), async (req, res) => {
         certificate: result.certificate,
         blockchain: result.blockchain,
         documentIntegrity: result.documentIntegrity,
+        signatureVerification: result.signatureVerification,
         transactionHash: result.transactionHash
       });
       res.json(serializedResult);

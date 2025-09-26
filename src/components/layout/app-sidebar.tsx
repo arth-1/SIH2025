@@ -8,6 +8,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import {
   ShieldCheck,
@@ -17,6 +20,10 @@ import {
   BarChart3,
   LogOut,
   Settings,
+  ChevronRight,
+  FileText,
+  Brain,
+  Fingerprint,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,16 +37,30 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useState } from 'react';
+
+const verificationItems = [
+  { href: '/verify', label: 'Bulk Verification', icon: FileText },
+  { href: '/certificate-validator', label: 'AI Analysis', icon: Brain },
+  { href: '/verify/comprehensive', label: 'Full Verification', icon: Fingerprint },
+];
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/verify', label: 'Verify Certificate', icon: ScanLine },
   { href: '/institutions', label: 'Institutions', icon: Building },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const [verificationOpen, setVerificationOpen] = useState(
+    pathname.startsWith('/verify') || pathname.startsWith('/certificate-validator')
+  );
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -68,6 +89,38 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          
+          <SidebarMenuItem>
+            <Collapsible open={verificationOpen} onOpenChange={setVerificationOpen}>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith('/verify') || pathname.startsWith('/certificate-validator')}
+                  tooltip="Verify Certificate"
+                >
+                  <ScanLine />
+                  <span>Verify Certificate</span>
+                  <ChevronRight className={`ml-auto transition-transform duration-200 ${verificationOpen ? 'rotate-90' : ''}`} />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {verificationItems.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === item.href}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>

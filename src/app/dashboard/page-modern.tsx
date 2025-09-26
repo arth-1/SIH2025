@@ -60,6 +60,7 @@ export default function ModernDashboard() {
     studentName: '',
     rollNumber: '',
     courseName: '',
+    studentEmail: '',
     issueDate: '',
     file: null as File | null
   });
@@ -67,7 +68,8 @@ export default function ModernDashboard() {
   // Certificate verification form
   const [verifyForm, setVerifyForm] = useState({
     certificateId: '',
-    file: null as File | null
+    file: null as File | null,
+    email: ''
   });
 
   // Student search form
@@ -137,6 +139,7 @@ export default function ModernDashboard() {
       formData.append('studentName', registerForm.studentName || '');
       formData.append('rollNumber', registerForm.rollNumber || '');
       formData.append('courseName', registerForm.courseName || '');
+      formData.append('studentEmail', registerForm.studentEmail || '');
       formData.append('institutionName', user?.instituteName || 'Unknown');
       formData.append('issueDate', registerForm.issueDate || '');
       formData.append('institutionId', user?.id || '');
@@ -162,6 +165,7 @@ export default function ModernDashboard() {
         studentName: '',
         rollNumber: '',
         courseName: '',
+        studentEmail: '',
         issueDate: '',
         file: null
       });
@@ -188,8 +192,12 @@ export default function ModernDashboard() {
       if (verifyForm.file) {
         formData.append('certificateFile', verifyForm.file);
       }
+      
+      if (verifyForm.email) {
+        formData.append('email', verifyForm.email);
+      }
 
-      const response = await fetch('http://localhost:5000/api/certificates/verify', {
+      const response = await fetch(`http://localhost:5000/api/enhanced-certificates/verify/${verifyForm.certificateId}`, {
         method: 'POST',
         body: formData
       });
@@ -521,6 +529,19 @@ export default function ModernDashboard() {
                   </div>
                   
                   <div className="space-y-2">
+                    <Label htmlFor="studentEmail" className="text-white">Student Email (Optional)</Label>
+                    <Input
+                      id="studentEmail"
+                      type="email"
+                      value={registerForm.studentEmail}
+                      onChange={(e) => setRegisterForm({...registerForm, studentEmail: e.target.value})}
+                      placeholder="student@example.com"
+                      disabled={loading}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-white bg-oxford_blue text-white placeholder:text-gray-400"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
                     <Label htmlFor="issueDate" className="text-white">Issue Date (Optional)</Label>
                     <Input
                       id="issueDate"
@@ -622,6 +643,22 @@ export default function ModernDashboard() {
                         </p>
                       </div>
                       
+                      <div className="space-y-2">
+                        <Label htmlFor="notificationEmail" className="text-white">Email for Notification (Optional)</Label>
+                        <Input
+                          id="notificationEmail"
+                          type="email"
+                          value={verifyForm.email}
+                          onChange={(e) => setVerifyForm({...verifyForm, email: e.target.value})}
+                          placeholder="your-email@example.com"
+                          disabled={loading}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-white bg-oxford_blue text-white placeholder:text-gray-400"
+                        />
+                        <p className="text-sm text-gray-400">
+                          Leave empty to auto-send to student's registered email (if available)
+                        </p>
+                      </div>
+                      
                       <Button type="submit" disabled={loading} className="w-full h-12">
                         {loading ? (
                           <>
@@ -643,10 +680,10 @@ export default function ModernDashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-6"
                       >
-                        <Card className={`border-2 ${verificationResult.isValid ? 'border-white bg-rich_black' : 'border-red-500 bg-rich_black'}`}>
+                        <Card className={`border-2 ${verificationResult.success ? 'border-green-500 bg-rich_black' : 'border-red-500 bg-rich_black'}`}>
                           <CardHeader>
-                            <CardTitle className={`flex items-center gap-2 ${verificationResult.isValid ? 'text-white' : 'text-red-400'}`}>
-                              {verificationResult.isValid ? (
+                            <CardTitle className={`flex items-center gap-2 ${verificationResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                              {verificationResult.success ? (
                                 <>
                                   <CheckCircle className="h-5 w-5" />
                                   Certificate Verified
@@ -660,35 +697,130 @@ export default function ModernDashboard() {
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            {verificationResult.isValid && verificationResult.certificate && (
-                              <div className="space-y-3">
+                            {verificationResult.success && verificationResult.certificateData && (
+                              <div className="space-y-4">
+                                {/* Verification Status Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                  <Badge 
+                                    variant={verificationResult.documentCheck ? "default" : "destructive"}
+                                    className={`text-center py-1 ${verificationResult.documentCheck ? 'bg-green-600' : ''}`}
+                                  >
+                                    Document: {verificationResult.documentCheck ? 'Pass' : 'Fail'}
+                                  </Badge>
+                                  <Badge 
+                                    variant={verificationResult.blockchainVerification ? "default" : "destructive"}
+                                    className={`text-center py-1 ${verificationResult.blockchainVerification ? 'bg-green-600' : ''}`}
+                                  >
+                                    Blockchain: {verificationResult.blockchainVerification ? 'Pass' : 'Fail'}
+                                  </Badge>
+                                  <Badge 
+                                    variant={verificationResult.integrityCheck ? "default" : "destructive"}
+                                    className={`text-center py-1 ${verificationResult.integrityCheck ? 'bg-green-600' : ''}`}
+                                  >
+                                    Integrity: {verificationResult.integrityCheck ? 'Pass' : 'Fail'}
+                                  </Badge>
+                                  {verificationResult.signatureVerification && (
+                                    <Badge 
+                                      variant={verificationResult.signatureVerification.overallMatch ? "default" : "destructive"}
+                                      className={`text-center py-1 ${verificationResult.signatureVerification.overallMatch ? 'bg-green-600' : ''}`}
+                                    >
+                                      Signatures: {verificationResult.signatureVerification.overallMatch ? 'Pass' : 'Fail'}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {/* Certificate Information */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
                                     <p className="font-medium text-white">Student Name:</p>
-                                    <p className="text-gray-400">{verificationResult.certificate.studentName || 'Not specified'}</p>
+                                    <p className="text-gray-400">{verificationResult.certificateData.studentName || 'Not specified'}</p>
                                   </div>
                                   <div>
                                     <p className="font-medium text-white">Course:</p>
-                                    <p className="text-gray-400">{verificationResult.certificate.courseName || 'Not specified'}</p>
+                                    <p className="text-gray-400">{verificationResult.certificateData.courseName || 'Not specified'}</p>
                                   </div>
                                   <div>
                                     <p className="font-medium text-white">Institution:</p>
-                                    <p className="text-gray-400">{verificationResult.certificate.institutionName}</p>
+                                    <p className="text-gray-400">{verificationResult.certificateData.institutionName || 'Not specified'}</p>
                                   </div>
                                   <div>
                                     <p className="font-medium text-white">Issue Date:</p>
-                                    <p className="text-gray-400">{verificationResult.certificate.issueDate || 'Not specified'}</p>
+                                    <p className="text-gray-400">{verificationResult.certificateData.issueDate || 'Not specified'}</p>
                                   </div>
                                 </div>
+
+                                {/* Signature Verification Results */}
+                                {verificationResult.signatureVerification && (
+                                  <div className="pt-3 border-t border-oxford_blue">
+                                    <h4 className="font-medium text-white mb-2">AI Signature Analysis:</h4>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-400">Signatures Found:</span>
+                                        <span className="text-white font-mono">{verificationResult.signatureVerification.signatureCount}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-400">Highest Confidence:</span>
+                                        <span className="text-white font-mono">{Math.round(verificationResult.signatureVerification.highestConfidenceScore * 100)}%</span>
+                                      </div>
+                                      {verificationResult.signatureVerification.signatureResults && verificationResult.signatureVerification.signatureResults.length > 0 && (
+                                        <div className="space-y-1">
+                                          <p className="text-gray-400 text-sm">Individual Results:</p>
+                                          {verificationResult.signatureVerification.signatureResults.map((sig: any, index: number) => (
+                                            <div key={index} className="flex justify-between items-center bg-oxford_blue/20 p-2 rounded text-sm">
+                                              <span className="text-gray-400">Signature {sig.signatureIndex + 1}:</span>
+                                              <div className="flex items-center gap-2">
+                                                <Badge 
+                                                  variant={sig.verificationStatus === 'forged' ? 'destructive' : 'default'}
+                                                  className={`text-xs ${sig.verificationStatus === 'forged' ? '' : 'bg-green-600'}`}
+                                                >
+                                                  {sig.verificationStatus === 'forged' ? 'Forged' : 'Real'}
+                                                </Badge>
+                                                <span className="text-white font-mono text-xs">{Math.round(sig.confidenceScore * 100)}%</span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Blockchain Hash */}
                                 <div className="pt-3 border-t border-oxford_blue">
                                   <p className="font-medium text-white">Blockchain Hash:</p>
-                                  <p className="text-xs text-gray-400 font-mono break-all">{verificationResult.certificate.blockchainHash}</p>
+                                  <p className="text-xs text-gray-400 font-mono break-all bg-oxford_blue/20 p-2 rounded mt-1">
+                                    {verificationResult.transactionHash || verificationResult.certificateData.blockchainHash || 'Not available'}
+                                  </p>
                                 </div>
+
+                                {/* Email Notification Status */}
+                                {verificationResult.emailSent !== undefined && (
+                                  <div className="pt-3 border-t border-oxford_blue">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {verificationResult.emailSent ? (
+                                        <>
+                                          <CheckCircle className="h-4 w-4 text-green-400" />
+                                          <p className="text-green-400 text-sm">Verification results sent to email successfully</p>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <XCircle className="h-4 w-4 text-red-400" />
+                                          <p className="text-red-400 text-sm">Failed to send email notification</p>
+                                        </>
+                                      )}
+                                    </div>
+                                    {verificationResult.emailRecipient && (
+                                      <p className="text-xs text-gray-400 ml-6">
+                                        Email sent to: {verificationResult.emailRecipient}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             )}
-                            {!verificationResult.isValid && (
+                            {!verificationResult.success && (
                               <p className="text-red-400">
-                                {verificationResult.message || 'Certificate could not be verified. It may be invalid or not registered in our system.'}
+                                {verificationResult.error || 'Certificate could not be verified. It may be invalid or not registered in our system.'}
                               </p>
                             )}
                           </CardContent>

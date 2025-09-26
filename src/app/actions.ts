@@ -15,6 +15,34 @@ export interface VerificationResult {
   error?: string;
 }
 
+export interface SignatureVerification {
+  overallMatch: boolean;
+  highestConfidenceScore: number;
+  signatureCount: number;
+  matchingSignatures?: number;
+  verificationStatus: string;
+  signatureResults: Array<{
+    signatureIndex: number;
+    confidenceScore: number;
+    isMatch: boolean;
+    verificationStatus: string;
+  }>;
+  error?: string;
+}
+
+export interface ComprehensiveVerificationResult {
+  success: boolean;
+  documentCheck: boolean;
+  blockchainVerification: boolean;
+  integrityCheck: boolean;
+  signatureVerification?: SignatureVerification;
+  certificateData?: any;
+  blockchainData?: any;
+  transactionHash?: string;
+  verificationDate: string;
+  error?: string;
+}
+
 export async function verifyCertificateAction(
   formData: FormData
 ): Promise<VerificationResult> {
@@ -58,6 +86,64 @@ export async function verifyCertificateAction(
       extraction: null,
       forgery: null,
       error: 'An unexpected error occurred during verification.',
+    };
+  }
+}
+
+export async function comprehensiveVerificationAction(
+  certificateId: string,
+  formData: FormData
+): Promise<ComprehensiveVerificationResult> {
+  const file = formData.get('certificate') as File | null;
+
+  if (!file) {
+    return { 
+      success: false,
+      documentCheck: false,
+      blockchainVerification: false,
+      integrityCheck: false,
+      verificationDate: new Date().toISOString(),
+      error: 'No certificate file provided.' 
+    };
+  }
+
+  try {
+    const backendFormData = new FormData();
+    backendFormData.append('certificateFile', file);
+
+    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/enhanced-certificates/verify/${certificateId}`, {
+      method: 'POST',
+      body: backendFormData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend verification failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    return {
+      success: result.success || false,
+      documentCheck: result.documentCheck || false,
+      blockchainVerification: result.blockchainVerification || false,
+      integrityCheck: result.integrityCheck || false,
+      signatureVerification: result.signatureVerification,
+      certificateData: result.certificateData,
+      blockchainData: result.blockchainData,
+      transactionHash: result.transactionHash,
+      verificationDate: result.verificationDate || new Date().toISOString(),
+      error: result.error
+    };
+
+  } catch (error) {
+    console.error('Error during comprehensive verification:', error);
+    return {
+      success: false,
+      documentCheck: false,
+      blockchainVerification: false,
+      integrityCheck: false,
+      verificationDate: new Date().toISOString(),
+      error: 'Failed to perform comprehensive verification. Please try again.',
     };
   }
 }
